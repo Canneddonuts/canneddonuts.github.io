@@ -1,0 +1,35 @@
+    h1, h2 {
+        text-align: center;
+        color: purple;
+    }
+
+    .info {
+        text-align: center;
+    }
+
+    body {
+        background-color: lightblue;
+    }
+
+    .caption {
+         display: block;
+    }
+
+    dt {
+      display: block;
+      margin-top: 40px;
+    }
+
+    dl {
+      text-align:  center;
+    }
+
+    dd {
+      color: #696969;
+    }
+
+    img {
+      max-height: 10em;
+      max-width: 3em;
+      vertical-align: middle ;
+    }

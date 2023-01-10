@@ -7,6 +7,22 @@ body {
     background-color: lightblue;
 }
 
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.box {
+  background: Beige;
+  width: 600px;
+
+  margin: 10px;
+  border: 10px solid purple;
+  padding-right: 50px;
+  padding-left:  30px;
+}
+
 dt {
   display: block;
   margin-top: 40px;

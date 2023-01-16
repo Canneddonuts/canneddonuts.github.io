@@ -1,10 +1,10 @@
-h1, h2, p {
+h1, h2, p, dd {
     text-align: center;
-    color: purple;
+    color: #D16587;
 }
 
 body {
-    background-color: lightblue;
+    background-color: #86A3E2;
 }
 
 .container {
@@ -13,12 +13,12 @@ body {
   align-items: center;
 }
 
-.box {
+.Software {
   background: Beige;
   width: 600px;
 
   margin: 10px;
-  border: 10px solid purple;
+  border: 10px solid #CFB172;
   padding-right: 50px;
   padding-left:  30px;
 }
@@ -28,16 +28,8 @@ dt {
   margin-top: 40px;
 }
 
-dl {
-  text-align:  center;
-}
-
-dd {
-  color: #696969;
-}
-
 img {
   max-height: 10em;
   max-width: 3em;
-  vertical-align: middle ;
+  vertical-align: middle;
 }

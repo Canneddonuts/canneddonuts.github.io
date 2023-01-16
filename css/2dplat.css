@@ -1,14 +1,21 @@
 h1, p {
-    color: purple;
+    color: #D16587;
     text-align: center;
 }
 
-div {
+.container {
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
+}
+
+.game {
+    width: 640px;
+    height: 480px;
+    border: 10px solid #CFB172;
+    background: #CFB172;
 }
 
 body {
-    background-color: lightblue;
+    background-color: #86A3E2;
 }

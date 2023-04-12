@@ -1,0 +1,21 @@
+h1, p {
+    color: #D16587;
+    text-align: center;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game {
+    width: 800px;
+    height: 450px;
+    border: 10px solid #CFB172;
+    background: #CFB172;
+}
+
+body {
+    background-color: #86A3E2;
+}

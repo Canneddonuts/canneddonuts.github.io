@@ -293,12 +293,12 @@ readBinary = (filename) => {
   return ret;
 };
 
-readAsync = (filename, onload, onerror) => {
+readAsync = (filename, onload, onerror, binary = true) => {
   // See the comment in the `read_` function.
   filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
-  fs.readFile(filename, function(err, data) {
+  fs.readFile(filename, binary ? undefined : 'utf8', (err, data) => {
     if (err) onerror(err);
-    else onload(data.buffer);
+    else onload(binary ? data.buffer : data);
   });
 };
 
@@ -313,7 +313,7 @@ readAsync = (filename, onload, onerror) => {
     module['exports'] = Module;
   }
 
-  process.on('uncaughtException', function(ex) {
+  process.on('uncaughtException', (ex) => {
     // suppress ExitStatus exceptions from showing an error
     if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
       throw ex;
@@ -327,7 +327,7 @@ readAsync = (filename, onload, onerror) => {
   // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
   var nodeMajor = process.versions.node.split(".")[0];
   if (nodeMajor < 15) {
-    process.on('unhandledRejection', function(reason) { throw reason; });
+    process.on('unhandledRejection', (reason) => { throw reason; });
   }
 
   quit_ = (status, toThrow) => {
@@ -335,7 +335,7 @@ readAsync = (filename, onload, onerror) => {
     throw toThrow;
   };
 
-  Module['inspect'] = function () { return '[Emscripten Module object]'; };
+  Module['inspect'] = () => '[Emscripten Module object]';
 
 } else
 if (ENVIRONMENT_IS_SHELL) {
@@ -343,12 +343,12 @@ if (ENVIRONMENT_IS_SHELL) {
   if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 
   if (typeof read != 'undefined') {
-    read_ = function shell_read(f) {
+    read_ = (f) => {
       return read(f);
     };
   }
 
-  readBinary = function readBinary(f) {
+  readBinary = (f) => {
     let data;
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
@@ -358,7 +358,7 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = function readAsync(f, onload, onerror) {
+  readAsync = (f, onload, onerror) => {
     setTimeout(() => onload(readBinary(f)), 0);
   };
 
@@ -786,7 +786,7 @@ function addRunDependency(id) {
     runDependencyTracking[id] = 1;
     if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
       // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(function() {
+      runDependencyWatcher = setInterval(() => {
         if (ABORT) {
           clearInterval(runDependencyWatcher);
           runDependencyWatcher = null;
@@ -939,35 +939,33 @@ function getBinaryPromise(binaryFile) {
     if (typeof fetch == 'function'
       && !isFileURI(binaryFile)
     ) {
-      return fetch(binaryFile, { credentials: 'same-origin' }).then(function(response) {
+      return fetch(binaryFile, { credentials: 'same-origin' }).then((response) => {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + binaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(function () {
-          return getBinary(binaryFile);
-      });
+      }).catch(() => getBinary(binaryFile));
     }
     else {
       if (readAsync) {
         // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-        return new Promise(function(resolve, reject) {
-          readAsync(binaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
+        return new Promise((resolve, reject) => {
+          readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
         });
       }
     }
   }
 
   // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(function() { return getBinary(binaryFile); });
+  return Promise.resolve().then(() => getBinary(binaryFile));
 }
 
 function instantiateArrayBuffer(binaryFile, imports, receiver) {
-  return getBinaryPromise(binaryFile).then(function(binary) {
+  return getBinaryPromise(binaryFile).then((binary) => {
     return WebAssembly.instantiate(binary, imports);
-  }).then(function (instance) {
+  }).then((instance) => {
     return instance;
-  }).then(receiver, function(reason) {
+  }).then(receiver, (reason) => {
     err('failed to asynchronously prepare wasm: ' + reason);
 
     // Warn on some common problems.
@@ -992,7 +990,7 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
       //   https://github.com/emscripten-core/emscripten/pull/16917
       !ENVIRONMENT_IS_NODE &&
       typeof fetch == 'function') {
-    return fetch(binaryFile, { credentials: 'same-origin' }).then(function(response) {
+    return fetch(binaryFile, { credentials: 'same-origin' }).then((response) => {
       // Suppress closure warning here since the upstream definition for
       // instantiateStreaming only allows Promise<Repsponse> rather than
       // an actual Response.
@@ -1184,7 +1182,7 @@ function unexportedRuntimeSymbol(sym) {
 function dbg(text) {
   // TODO(sbc): Make this configurable somehow.  Its not always convenient for
   // logging to show up as errors.
-  console.error(text);
+  console.error.apply(console, arguments);
 }
 
 // end include: runtime_debug.js
@@ -1249,7 +1247,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
       case 'i8': HEAP8[((ptr)>>0)] = value; break;
       case 'i16': HEAP16[((ptr)>>1)] = value; break;
       case 'i32': HEAP32[((ptr)>>2)] = value; break;
-      case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)] = tempI64[0],HEAP32[(((ptr)+(4))>>2)] = tempI64[1]); break;
+      case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[((ptr)>>2)] = tempI64[0],HEAP32[(((ptr)+(4))>>2)] = tempI64[1]); break;
       case 'float': HEAPF32[((ptr)>>2)] = value; break;
       case 'double': HEAPF64[((ptr)>>3)] = value; break;
       case '*': HEAPU32[((ptr)>>2)] = value; break;
@@ -1330,7 +1328,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
      * @param {number} ptr
      * @param {number=} maxBytesToRead - An optional length that specifies the
      *   maximum number of bytes to read. You can omit this parameter to scan the
-     *   string until the first   byte. If maxBytesToRead is passed, and the string
+     *   string until the first 0 byte. If maxBytesToRead is passed, and the string
      *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
      *   string will cut short at that byte index (i.e. maxBytesToRead will not
      *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
@@ -1525,6 +1523,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
     }
   
   function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
+      assert(typeof str === 'string');
       // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
       // undefined and false each don't write out any bytes.
       if (!(maxBytesToWrite > 0))
@@ -3615,19 +3614,19 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         HEAP32[(((buf)+(20))>>2)] = stat.uid;
         HEAP32[(((buf)+(24))>>2)] = stat.gid;
         HEAP32[(((buf)+(28))>>2)] = stat.rdev;
-        (tempI64 = [stat.size>>>0,(tempDouble=stat.size,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(40))>>2)] = tempI64[0],HEAP32[(((buf)+(44))>>2)] = tempI64[1]);
+        (tempI64 = [stat.size>>>0,(tempDouble=stat.size,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[(((buf)+(40))>>2)] = tempI64[0],HEAP32[(((buf)+(44))>>2)] = tempI64[1]);
         HEAP32[(((buf)+(48))>>2)] = 4096;
         HEAP32[(((buf)+(52))>>2)] = stat.blocks;
         var atime = stat.atime.getTime();
         var mtime = stat.mtime.getTime();
         var ctime = stat.ctime.getTime();
-        (tempI64 = [Math.floor(atime / 1000)>>>0,(tempDouble=Math.floor(atime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(56))>>2)] = tempI64[0],HEAP32[(((buf)+(60))>>2)] = tempI64[1]);
+        (tempI64 = [Math.floor(atime / 1000)>>>0,(tempDouble=Math.floor(atime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[(((buf)+(56))>>2)] = tempI64[0],HEAP32[(((buf)+(60))>>2)] = tempI64[1]);
         HEAPU32[(((buf)+(64))>>2)] = (atime % 1000) * 1000;
-        (tempI64 = [Math.floor(mtime / 1000)>>>0,(tempDouble=Math.floor(mtime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(72))>>2)] = tempI64[0],HEAP32[(((buf)+(76))>>2)] = tempI64[1]);
+        (tempI64 = [Math.floor(mtime / 1000)>>>0,(tempDouble=Math.floor(mtime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[(((buf)+(72))>>2)] = tempI64[0],HEAP32[(((buf)+(76))>>2)] = tempI64[1]);
         HEAPU32[(((buf)+(80))>>2)] = (mtime % 1000) * 1000;
-        (tempI64 = [Math.floor(ctime / 1000)>>>0,(tempDouble=Math.floor(ctime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(88))>>2)] = tempI64[0],HEAP32[(((buf)+(92))>>2)] = tempI64[1]);
+        (tempI64 = [Math.floor(ctime / 1000)>>>0,(tempDouble=Math.floor(ctime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[(((buf)+(88))>>2)] = tempI64[0],HEAP32[(((buf)+(92))>>2)] = tempI64[1]);
         HEAPU32[(((buf)+(96))>>2)] = (ctime % 1000) * 1000;
-        (tempI64 = [stat.ino>>>0,(tempDouble=stat.ino,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(104))>>2)] = tempI64[0],HEAP32[(((buf)+(108))>>2)] = tempI64[1]);
+        (tempI64 = [stat.ino>>>0,(tempDouble=stat.ino,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[(((buf)+(104))>>2)] = tempI64[0],HEAP32[(((buf)+(108))>>2)] = tempI64[1]);
         return 0;
       },doMsync:function(addr, stream, len, flags, offset) {
         if (!FS.isFile(stream.node.mode)) {
@@ -4155,7 +4154,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         });
       }};
   /** @suppress {duplicate } */
-  function _glActiveTexture(x0) { GLctx['activeTexture'](x0) }
+  function _glActiveTexture(x0) { GLctx.activeTexture(x0) }
   var _emscripten_glActiveTexture = _glActiveTexture;
 
   /** @suppress {duplicate } */
@@ -4207,30 +4206,30 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   
   /** @suppress {duplicate } */
   function _glBindVertexArray(vao) {
-      GLctx['bindVertexArray'](GL.vaos[vao]);
+      GLctx.bindVertexArray(GL.vaos[vao]);
     }
   /** @suppress {duplicate } */
   var _glBindVertexArrayOES = _glBindVertexArray;
   var _emscripten_glBindVertexArrayOES = _glBindVertexArrayOES;
 
   /** @suppress {duplicate } */
-  function _glBlendColor(x0, x1, x2, x3) { GLctx['blendColor'](x0, x1, x2, x3) }
+  function _glBlendColor(x0, x1, x2, x3) { GLctx.blendColor(x0, x1, x2, x3) }
   var _emscripten_glBlendColor = _glBlendColor;
 
   /** @suppress {duplicate } */
-  function _glBlendEquation(x0) { GLctx['blendEquation'](x0) }
+  function _glBlendEquation(x0) { GLctx.blendEquation(x0) }
   var _emscripten_glBlendEquation = _glBlendEquation;
 
   /** @suppress {duplicate } */
-  function _glBlendEquationSeparate(x0, x1) { GLctx['blendEquationSeparate'](x0, x1) }
+  function _glBlendEquationSeparate(x0, x1) { GLctx.blendEquationSeparate(x0, x1) }
   var _emscripten_glBlendEquationSeparate = _glBlendEquationSeparate;
 
   /** @suppress {duplicate } */
-  function _glBlendFunc(x0, x1) { GLctx['blendFunc'](x0, x1) }
+  function _glBlendFunc(x0, x1) { GLctx.blendFunc(x0, x1) }
   var _emscripten_glBlendFunc = _glBlendFunc;
 
   /** @suppress {duplicate } */
-  function _glBlendFuncSeparate(x0, x1, x2, x3) { GLctx['blendFuncSeparate'](x0, x1, x2, x3) }
+  function _glBlendFuncSeparate(x0, x1, x2, x3) { GLctx.blendFuncSeparate(x0, x1, x2, x3) }
   var _emscripten_glBlendFuncSeparate = _glBlendFuncSeparate;
 
   /** @suppress {duplicate } */
@@ -4249,23 +4248,23 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glBufferSubData = _glBufferSubData;
 
   /** @suppress {duplicate } */
-  function _glCheckFramebufferStatus(x0) { return GLctx['checkFramebufferStatus'](x0) }
+  function _glCheckFramebufferStatus(x0) { return GLctx.checkFramebufferStatus(x0) }
   var _emscripten_glCheckFramebufferStatus = _glCheckFramebufferStatus;
 
   /** @suppress {duplicate } */
-  function _glClear(x0) { GLctx['clear'](x0) }
+  function _glClear(x0) { GLctx.clear(x0) }
   var _emscripten_glClear = _glClear;
 
   /** @suppress {duplicate } */
-  function _glClearColor(x0, x1, x2, x3) { GLctx['clearColor'](x0, x1, x2, x3) }
+  function _glClearColor(x0, x1, x2, x3) { GLctx.clearColor(x0, x1, x2, x3) }
   var _emscripten_glClearColor = _glClearColor;
 
   /** @suppress {duplicate } */
-  function _glClearDepthf(x0) { GLctx['clearDepth'](x0) }
+  function _glClearDepthf(x0) { GLctx.clearDepth(x0) }
   var _emscripten_glClearDepthf = _glClearDepthf;
 
   /** @suppress {duplicate } */
-  function _glClearStencil(x0) { GLctx['clearStencil'](x0) }
+  function _glClearStencil(x0) { GLctx.clearStencil(x0) }
   var _emscripten_glClearStencil = _glClearStencil;
 
   /** @suppress {duplicate } */
@@ -4282,22 +4281,22 @@ function GetCanvasHeight() { return canvas.clientHeight; }
 
   /** @suppress {duplicate } */
   function _glCompressedTexImage2D(target, level, internalFormat, width, height, border, imageSize, data) {
-      GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data ? HEAPU8.subarray((data), (data+imageSize)) : null);
+      GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? HEAPU8.subarray((data), (data+imageSize)) : null);
     }
   var _emscripten_glCompressedTexImage2D = _glCompressedTexImage2D;
 
   /** @suppress {duplicate } */
   function _glCompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
-      GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, data ? HEAPU8.subarray((data), (data+imageSize)) : null);
+      GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? HEAPU8.subarray((data), (data+imageSize)) : null);
     }
   var _emscripten_glCompressedTexSubImage2D = _glCompressedTexSubImage2D;
 
   /** @suppress {duplicate } */
-  function _glCopyTexImage2D(x0, x1, x2, x3, x4, x5, x6, x7) { GLctx['copyTexImage2D'](x0, x1, x2, x3, x4, x5, x6, x7) }
+  function _glCopyTexImage2D(x0, x1, x2, x3, x4, x5, x6, x7) { GLctx.copyTexImage2D(x0, x1, x2, x3, x4, x5, x6, x7) }
   var _emscripten_glCopyTexImage2D = _glCopyTexImage2D;
 
   /** @suppress {duplicate } */
-  function _glCopyTexSubImage2D(x0, x1, x2, x3, x4, x5, x6, x7) { GLctx['copyTexSubImage2D'](x0, x1, x2, x3, x4, x5, x6, x7) }
+  function _glCopyTexSubImage2D(x0, x1, x2, x3, x4, x5, x6, x7) { GLctx.copyTexSubImage2D(x0, x1, x2, x3, x4, x5, x6, x7) }
   var _emscripten_glCopyTexSubImage2D = _glCopyTexSubImage2D;
 
   /** @suppress {duplicate } */
@@ -4324,7 +4323,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glCreateShader = _glCreateShader;
 
   /** @suppress {duplicate } */
-  function _glCullFace(x0) { GLctx['cullFace'](x0) }
+  function _glCullFace(x0) { GLctx.cullFace(x0) }
   var _emscripten_glCullFace = _glCullFace;
 
   /** @suppress {duplicate } */
@@ -4428,7 +4427,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   function _glDeleteVertexArrays(n, vaos) {
       for (var i = 0; i < n; i++) {
         var id = HEAP32[(((vaos)+(i*4))>>2)];
-        GLctx['deleteVertexArray'](GL.vaos[id]);
+        GLctx.deleteVertexArray(GL.vaos[id]);
         GL.vaos[id] = null;
       }
     }
@@ -4437,7 +4436,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glDeleteVertexArraysOES = _glDeleteVertexArraysOES;
 
   /** @suppress {duplicate } */
-  function _glDepthFunc(x0) { GLctx['depthFunc'](x0) }
+  function _glDepthFunc(x0) { GLctx.depthFunc(x0) }
   var _emscripten_glDepthFunc = _glDepthFunc;
 
   /** @suppress {duplicate } */
@@ -4447,7 +4446,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glDepthMask = _glDepthMask;
 
   /** @suppress {duplicate } */
-  function _glDepthRangef(x0, x1) { GLctx['depthRange'](x0, x1) }
+  function _glDepthRangef(x0, x1) { GLctx.depthRange(x0, x1) }
   var _emscripten_glDepthRangef = _glDepthRangef;
 
   /** @suppress {duplicate } */
@@ -4457,7 +4456,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glDetachShader = _glDetachShader;
 
   /** @suppress {duplicate } */
-  function _glDisable(x0) { GLctx['disable'](x0) }
+  function _glDisable(x0) { GLctx.disable(x0) }
   var _emscripten_glDisable = _glDisable;
 
   /** @suppress {duplicate } */
@@ -4477,7 +4476,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   
   /** @suppress {duplicate } */
   function _glDrawArraysInstanced(mode, first, count, primcount) {
-      GLctx['drawArraysInstanced'](mode, first, count, primcount);
+      GLctx.drawArraysInstanced(mode, first, count, primcount);
     }
   /** @suppress {duplicate } */
   var _glDrawArraysInstancedANGLE = _glDrawArraysInstanced;
@@ -4494,7 +4493,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         bufArray[i] = HEAP32[(((bufs)+(i*4))>>2)];
       }
   
-      GLctx['drawBuffers'](bufArray);
+      GLctx.drawBuffers(bufArray);
     }
   /** @suppress {duplicate } */
   var _glDrawBuffersWEBGL = _glDrawBuffers;
@@ -4511,14 +4510,14 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   
   /** @suppress {duplicate } */
   function _glDrawElementsInstanced(mode, count, type, indices, primcount) {
-      GLctx['drawElementsInstanced'](mode, count, type, indices, primcount);
+      GLctx.drawElementsInstanced(mode, count, type, indices, primcount);
     }
   /** @suppress {duplicate } */
   var _glDrawElementsInstancedANGLE = _glDrawElementsInstanced;
   var _emscripten_glDrawElementsInstancedANGLE = _glDrawElementsInstancedANGLE;
 
   /** @suppress {duplicate } */
-  function _glEnable(x0) { GLctx['enable'](x0) }
+  function _glEnable(x0) { GLctx.enable(x0) }
   var _emscripten_glEnable = _glEnable;
 
   /** @suppress {duplicate } */
@@ -4534,11 +4533,11 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glEndQueryEXT = _glEndQueryEXT;
 
   /** @suppress {duplicate } */
-  function _glFinish() { GLctx['finish']() }
+  function _glFinish() { GLctx.finish() }
   var _emscripten_glFinish = _glFinish;
 
   /** @suppress {duplicate } */
-  function _glFlush() { GLctx['flush']() }
+  function _glFlush() { GLctx.flush() }
   var _emscripten_glFlush = _glFlush;
 
   /** @suppress {duplicate } */
@@ -4556,7 +4555,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glFramebufferTexture2D = _glFramebufferTexture2D;
 
   /** @suppress {duplicate } */
-  function _glFrontFace(x0) { GLctx['frontFace'](x0) }
+  function _glFrontFace(x0) { GLctx.frontFace(x0) }
   var _emscripten_glFrontFace = _glFrontFace;
 
   function __glGenObject(n, buffers, createFunction, objectTable
@@ -4634,7 +4633,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glGenVertexArraysOES = _glGenVertexArraysOES;
 
   /** @suppress {duplicate } */
-  function _glGenerateMipmap(x0) { GLctx['generateMipmap'](x0) }
+  function _glGenerateMipmap(x0) { GLctx.generateMipmap(x0) }
   var _emscripten_glGenerateMipmap = _glGenerateMipmap;
 
   
@@ -5042,6 +5041,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glGetShaderiv = _glGetShaderiv;
 
   
+  
   function stringToNewUTF8(str) {
       var size = lengthBytesUTF8(str) + 1;
       var ret = _malloc(size);
@@ -5337,7 +5337,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glGetVertexAttribiv = _glGetVertexAttribiv;
 
   /** @suppress {duplicate } */
-  function _glHint(x0, x1) { GLctx['hint'](x0, x1) }
+  function _glHint(x0, x1) { GLctx.hint(x0, x1) }
   var _emscripten_glHint = _glHint;
 
   /** @suppress {duplicate } */
@@ -5349,7 +5349,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glIsBuffer = _glIsBuffer;
 
   /** @suppress {duplicate } */
-  function _glIsEnabled(x0) { return GLctx['isEnabled'](x0) }
+  function _glIsEnabled(x0) { return GLctx.isEnabled(x0) }
   var _emscripten_glIsEnabled = _glIsEnabled;
 
   /** @suppress {duplicate } */
@@ -5406,14 +5406,14 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   
       var vao = GL.vaos[array];
       if (!vao) return 0;
-      return GLctx['isVertexArray'](vao);
+      return GLctx.isVertexArray(vao);
     }
   /** @suppress {duplicate } */
   var _glIsVertexArrayOES = _glIsVertexArray;
   var _emscripten_glIsVertexArrayOES = _glIsVertexArrayOES;
 
   /** @suppress {duplicate } */
-  function _glLineWidth(x0) { GLctx['lineWidth'](x0) }
+  function _glLineWidth(x0) { GLctx.lineWidth(x0) }
   var _emscripten_glLineWidth = _glLineWidth;
 
   /** @suppress {duplicate } */
@@ -5437,7 +5437,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glPixelStorei = _glPixelStorei;
 
   /** @suppress {duplicate } */
-  function _glPolygonOffset(x0, x1) { GLctx['polygonOffset'](x0, x1) }
+  function _glPolygonOffset(x0, x1) { GLctx.polygonOffset(x0, x1) }
   var _emscripten_glPolygonOffset = _glPolygonOffset;
 
   /** @suppress {duplicate } */
@@ -5523,7 +5523,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glReleaseShaderCompiler = _glReleaseShaderCompiler;
 
   /** @suppress {duplicate } */
-  function _glRenderbufferStorage(x0, x1, x2, x3) { GLctx['renderbufferStorage'](x0, x1, x2, x3) }
+  function _glRenderbufferStorage(x0, x1, x2, x3) { GLctx.renderbufferStorage(x0, x1, x2, x3) }
   var _emscripten_glRenderbufferStorage = _glRenderbufferStorage;
 
   /** @suppress {duplicate } */
@@ -5533,7 +5533,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glSampleCoverage = _glSampleCoverage;
 
   /** @suppress {duplicate } */
-  function _glScissor(x0, x1, x2, x3) { GLctx['scissor'](x0, x1, x2, x3) }
+  function _glScissor(x0, x1, x2, x3) { GLctx.scissor(x0, x1, x2, x3) }
   var _emscripten_glScissor = _glScissor;
 
   /** @suppress {duplicate } */
@@ -5551,27 +5551,27 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glShaderSource = _glShaderSource;
 
   /** @suppress {duplicate } */
-  function _glStencilFunc(x0, x1, x2) { GLctx['stencilFunc'](x0, x1, x2) }
+  function _glStencilFunc(x0, x1, x2) { GLctx.stencilFunc(x0, x1, x2) }
   var _emscripten_glStencilFunc = _glStencilFunc;
 
   /** @suppress {duplicate } */
-  function _glStencilFuncSeparate(x0, x1, x2, x3) { GLctx['stencilFuncSeparate'](x0, x1, x2, x3) }
+  function _glStencilFuncSeparate(x0, x1, x2, x3) { GLctx.stencilFuncSeparate(x0, x1, x2, x3) }
   var _emscripten_glStencilFuncSeparate = _glStencilFuncSeparate;
 
   /** @suppress {duplicate } */
-  function _glStencilMask(x0) { GLctx['stencilMask'](x0) }
+  function _glStencilMask(x0) { GLctx.stencilMask(x0) }
   var _emscripten_glStencilMask = _glStencilMask;
 
   /** @suppress {duplicate } */
-  function _glStencilMaskSeparate(x0, x1) { GLctx['stencilMaskSeparate'](x0, x1) }
+  function _glStencilMaskSeparate(x0, x1) { GLctx.stencilMaskSeparate(x0, x1) }
   var _emscripten_glStencilMaskSeparate = _glStencilMaskSeparate;
 
   /** @suppress {duplicate } */
-  function _glStencilOp(x0, x1, x2) { GLctx['stencilOp'](x0, x1, x2) }
+  function _glStencilOp(x0, x1, x2) { GLctx.stencilOp(x0, x1, x2) }
   var _emscripten_glStencilOp = _glStencilOp;
 
   /** @suppress {duplicate } */
-  function _glStencilOpSeparate(x0, x1, x2, x3) { GLctx['stencilOpSeparate'](x0, x1, x2, x3) }
+  function _glStencilOpSeparate(x0, x1, x2, x3) { GLctx.stencilOpSeparate(x0, x1, x2, x3) }
   var _emscripten_glStencilOpSeparate = _glStencilOpSeparate;
 
   
@@ -5582,7 +5582,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glTexImage2D = _glTexImage2D;
 
   /** @suppress {duplicate } */
-  function _glTexParameterf(x0, x1, x2) { GLctx['texParameterf'](x0, x1, x2) }
+  function _glTexParameterf(x0, x1, x2) { GLctx.texParameterf(x0, x1, x2) }
   var _emscripten_glTexParameterf = _glTexParameterf;
 
   /** @suppress {duplicate } */
@@ -5593,7 +5593,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glTexParameterfv = _glTexParameterfv;
 
   /** @suppress {duplicate } */
-  function _glTexParameteri(x0, x1, x2) { GLctx['texParameteri'](x0, x1, x2) }
+  function _glTexParameteri(x0, x1, x2) { GLctx.texParameteri(x0, x1, x2) }
   var _emscripten_glTexParameteri = _glTexParameteri;
 
   /** @suppress {duplicate } */
@@ -5942,7 +5942,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glValidateProgram = _glValidateProgram;
 
   /** @suppress {duplicate } */
-  function _glVertexAttrib1f(x0, x1) { GLctx['vertexAttrib1f'](x0, x1) }
+  function _glVertexAttrib1f(x0, x1) { GLctx.vertexAttrib1f(x0, x1) }
   var _emscripten_glVertexAttrib1f = _glVertexAttrib1f;
 
   /** @suppress {duplicate } */
@@ -5953,7 +5953,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glVertexAttrib1fv = _glVertexAttrib1fv;
 
   /** @suppress {duplicate } */
-  function _glVertexAttrib2f(x0, x1, x2) { GLctx['vertexAttrib2f'](x0, x1, x2) }
+  function _glVertexAttrib2f(x0, x1, x2) { GLctx.vertexAttrib2f(x0, x1, x2) }
   var _emscripten_glVertexAttrib2f = _glVertexAttrib2f;
 
   /** @suppress {duplicate } */
@@ -5964,7 +5964,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glVertexAttrib2fv = _glVertexAttrib2fv;
 
   /** @suppress {duplicate } */
-  function _glVertexAttrib3f(x0, x1, x2, x3) { GLctx['vertexAttrib3f'](x0, x1, x2, x3) }
+  function _glVertexAttrib3f(x0, x1, x2, x3) { GLctx.vertexAttrib3f(x0, x1, x2, x3) }
   var _emscripten_glVertexAttrib3f = _glVertexAttrib3f;
 
   /** @suppress {duplicate } */
@@ -5975,7 +5975,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glVertexAttrib3fv = _glVertexAttrib3fv;
 
   /** @suppress {duplicate } */
-  function _glVertexAttrib4f(x0, x1, x2, x3, x4) { GLctx['vertexAttrib4f'](x0, x1, x2, x3, x4) }
+  function _glVertexAttrib4f(x0, x1, x2, x3, x4) { GLctx.vertexAttrib4f(x0, x1, x2, x3, x4) }
   var _emscripten_glVertexAttrib4f = _glVertexAttrib4f;
 
   /** @suppress {duplicate } */
@@ -5988,7 +5988,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   
   /** @suppress {duplicate } */
   function _glVertexAttribDivisor(index, divisor) {
-      GLctx['vertexAttribDivisor'](index, divisor);
+      GLctx.vertexAttribDivisor(index, divisor);
     }
   /** @suppress {duplicate } */
   var _glVertexAttribDivisorANGLE = _glVertexAttribDivisor;
@@ -6001,7 +6001,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   var _emscripten_glVertexAttribPointer = _glVertexAttribPointer;
 
   /** @suppress {duplicate } */
-  function _glViewport(x0, x1, x2, x3) { GLctx['viewport'](x0, x1, x2, x3) }
+  function _glViewport(x0, x1, x2, x3) { GLctx.viewport(x0, x1, x2, x3) }
   var _emscripten_glViewport = _glViewport;
 
   function _emscripten_memcpy_big(dest, src, num) {
@@ -6071,6 +6071,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
     }
   
   
+  
   var wasmTableMirror = [];
   
   function getWasmTableEntry(funcPtr) {
@@ -6108,6 +6109,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
       return 0;
     }
 
+  
   
   
   
@@ -6213,7 +6215,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   /** @param {number=} timeout */
   function safeSetTimeout(func, timeout) {
       
-      return setTimeout(function() {
+      return setTimeout(() => {
         
         callUserCallback(func);
       }, timeout);
@@ -6392,7 +6394,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
             };
             audio.src = url;
             // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-            safeSetTimeout(function() {
+            safeSetTimeout(() => {
               finish(audio); // try to use it even though it is not necessarily ready to play
             }, 10000);
           } else {
@@ -6445,7 +6447,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         Browser.init();
   
         var handled = false;
-        Module['preloadPlugins'].forEach(function(plugin) {
+        Module['preloadPlugins'].forEach((plugin) => {
           if (handled) return;
           if (plugin['canHandle'](fullname)) {
             plugin['handle'](byteArray, fullname, finish, onerror);
@@ -6493,7 +6495,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
           Module.ctx = ctx;
           if (useWebGL) GL.makeContextCurrent(contextHandle);
           Module.useWebGL = useWebGL;
-          Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+          Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
           Browser.init();
         }
         return ctx;
@@ -6569,7 +6571,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
                   document['mozCancelFullScreen'] ||
                   document['msExitFullscreen'] ||
                   document['webkitCancelFullScreen'] ||
-            (function() {});
+            (() => {});
         CFS.apply(document, []);
         return true;
       },nextRAF:0,fakeRequestAnimationFrame:function(func) {
@@ -6598,7 +6600,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         return safeSetTimeout(func, timeout);
       },safeRequestAnimationFrame:function(func) {
         
-        return Browser.requestAnimationFrame(function() {
+        return Browser.requestAnimationFrame(() => {
           
           callUserCallback(func);
         });
@@ -6743,9 +6745,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         }
       },resizeListeners:[],updateResizeListeners:function() {
         var canvas = Module['canvas'];
-        Browser.resizeListeners.forEach(function(listener) {
-          listener(canvas.width, canvas.height);
-        });
+        Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
       },setCanvasSize:function(width, height, noUpdates) {
         var canvas = Module['canvas'];
         Browser.updateCanvasDimensions(canvas, width, height);
@@ -6980,6 +6980,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
 
   
   
+  
   function registerUiEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       if (!JSEvents.uiEvent) JSEvents.uiEvent = _malloc( 36 );
   
@@ -7025,6 +7026,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
       return 0;
     }
 
+  
   
   
   
@@ -7182,7 +7184,7 @@ function GetCanvasHeight() { return canvas.clientHeight; }
       var offset = convertI32PairToI53Checked(offset_low, offset_high); if (isNaN(offset)) return 61;
       var stream = SYSCALLS.getStreamFromFD(fd);
       FS.llseek(stream, offset, whence);
-      (tempI64 = [stream.position>>>0,(tempDouble=stream.position,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((newOffset)>>2)] = tempI64[0],HEAP32[(((newOffset)+(4))>>2)] = tempI64[1]);
+      (tempI64 = [stream.position>>>0,(tempDouble=stream.position,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? (+(Math.floor((tempDouble)/4294967296.0)))>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)], HEAP32[((newOffset)>>2)] = tempI64[0],HEAP32[(((newOffset)+(4))>>2)] = tempI64[1]);
       if (stream.getdents && offset === 0 && whence === 0) stream.getdents = null; // reset readdir state
       return 0;
     } catch (e) {
@@ -7480,10 +7482,11 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         var repeat = status && GLFW.active.keys[key];
         GLFW.active.keys[key] = status;
         GLFW.active.domKeys[keyCode] = status;
-        if (!GLFW.active.keyFunc) return;
   
-        if (repeat) status = 2; // GLFW_REPEAT
-        getWasmTableEntry(GLFW.active.keyFunc)(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
+        if (GLFW.active.keyFunc) {
+          if (repeat) status = 2; // GLFW_REPEAT
+          getWasmTableEntry(GLFW.active.keyFunc)(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
+        }
       },onGamepadConnected:function(event) {
         GLFW.refreshJoysticks();
       },onGamepadDisconnected:function(event) {
@@ -7514,7 +7517,9 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   
         if (event.target != Module["canvas"] || !GLFW.active.cursorPosFunc) return;
   
-        getWasmTableEntry(GLFW.active.cursorPosFunc)(GLFW.active.id, Browser.mouseX, Browser.mouseY);
+        if (GLFW.active.cursorPosFunc) {
+          getWasmTableEntry(GLFW.active.cursorPosFunc)(GLFW.active.id, Browser.mouseX, Browser.mouseY);
+        }
       },DOMToGLFWMouseButton:function(event) {
         // DOM and glfw have different button codes.
         // See http://www.w3schools.com/jsref/event_button.asp.
@@ -7530,15 +7535,19 @@ function GetCanvasHeight() { return canvas.clientHeight; }
       },onMouseenter:function(event) {
         if (!GLFW.active) return;
   
-        if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+        if (event.target != Module["canvas"]) return;
   
-        getWasmTableEntry(GLFW.active.cursorEnterFunc)(GLFW.active.id, 1);
+        if (GLFW.active.cursorEnterFunc) {
+          getWasmTableEntry(GLFW.active.cursorEnterFunc)(GLFW.active.id, 1);
+        }
       },onMouseleave:function(event) {
         if (!GLFW.active) return;
   
-        if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+        if (event.target != Module["canvas"]) return;
   
-        getWasmTableEntry(GLFW.active.cursorEnterFunc)(GLFW.active.id, 0);
+        if (GLFW.active.cursorEnterFunc) {
+          getWasmTableEntry(GLFW.active.cursorEnterFunc)(GLFW.active.id, 0);
+        }
       },onMouseButtonChanged:function(event, status) {
         if (!GLFW.active) return;
   
@@ -7557,9 +7566,9 @@ function GetCanvasHeight() { return canvas.clientHeight; }
           GLFW.active.buttons &= ~(1 << eventButton);
         }
   
-        if (!GLFW.active.mouseButtonFunc) return;
-  
-        getWasmTableEntry(GLFW.active.mouseButtonFunc)(GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
+        if (GLFW.active.mouseButtonFunc) {
+          getWasmTableEntry(GLFW.active.mouseButtonFunc)(GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
+        }
       },onMouseButtonDown:function(event) {
         if (!GLFW.active) return;
         GLFW.onMouseButtonChanged(event, 1); // GLFW_PRESS
@@ -7573,7 +7582,6 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         GLFW.wheelPos += delta;
   
         if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
-  
         var sx = 0;
         var sy = delta;
         if (event.type == 'mousewheel') {
@@ -7629,20 +7637,22 @@ function GetCanvasHeight() { return canvas.clientHeight; }
       },onWindowSizeChanged:function() {
         if (!GLFW.active) return;
   
-        if (!GLFW.active.windowSizeFunc) return;
-  
-        getWasmTableEntry(GLFW.active.windowSizeFunc)(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        if (GLFW.active.windowSizeFunc) {
+          getWasmTableEntry(GLFW.active.windowSizeFunc)(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        }
       },onFramebufferSizeChanged:function() {
         if (!GLFW.active) return;
   
-        if (!GLFW.active.framebufferSizeFunc) return;
-  
-        getWasmTableEntry(GLFW.active.framebufferSizeFunc)(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        if (GLFW.active.framebufferSizeFunc) {
+          getWasmTableEntry(GLFW.active.framebufferSizeFunc)(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        }
       },onWindowContentScaleChanged:function(scale) {
         GLFW.scale = scale;
         if (!GLFW.active) return;
   
-        getWasmTableEntry(GLFW.active.windowContentScaleFunc)(GLFW.active.id, GLFW.scale, GLFW.scale);
+        if (GLFW.active.windowContentScaleFunc) {
+          getWasmTableEntry(GLFW.active.windowContentScaleFunc)(GLFW.active.id, GLFW.scale, GLFW.scale);
+        }
       },getTime:function() {
         return _emscripten_get_now() / 1000;
       },setWindowTitle:function(winid, title) {
@@ -7940,9 +7950,9 @@ function GetCanvasHeight() { return canvas.clientHeight; }
           }
         }
   
-        if (!win.windowSizeFunc) return;
-  
-        getWasmTableEntry(win.windowSizeFunc)(win.id, width, height);
+        if (win.windowSizeFunc) {
+          getWasmTableEntry(win.windowSizeFunc)(win.id, width, height);
+        }
       },createWindow:function(width, height, title, monitor, share) {
         var i, id;
         for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
@@ -8000,8 +8010,9 @@ function GetCanvasHeight() { return canvas.clientHeight; }
         var win = GLFW.WindowFromId(winid);
         if (!win) return;
   
-        if (win.windowCloseFunc)
+        if (win.windowCloseFunc) {
           getWasmTableEntry(win.windowCloseFunc)(win.id);
+        }
   
         GLFW.windows[win.id - 1] = null;
         if (GLFW.active.id == win.id)
@@ -8076,6 +8087,8 @@ function GetCanvasHeight() { return canvas.clientHeight; }
   function _emscripten_get_device_pixel_ratio() {
       return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
     }
+  
+  
   
   function _glfwInit() {
       if (GLFW.windows) return 1; // GL_TRUE
@@ -8781,8 +8794,6 @@ var _malloc = createExportWrapper("malloc");
 /** @type {function(...*):?} */
 var ___errno_location = createExportWrapper("__errno_location");
 /** @type {function(...*):?} */
-var ___dl_seterr = createExportWrapper("__dl_seterr");
-/** @type {function(...*):?} */
 var _fflush = Module["_fflush"] = createExportWrapper("fflush");
 /** @type {function(...*):?} */
 var _emscripten_stack_init = function() {
@@ -8945,10 +8956,9 @@ var missingLibrarySymbols = [
   'polyfillSetImmediate',
   'getPromise',
   'makePromise',
+  'idsToPromises',
   'makePromiseCallback',
   'ExceptionInfo',
-  'exception_addRef',
-  'exception_decRef',
   '_setNetworkCallback',
   'writeGLArray',
   'registerWebGlEventCallback',

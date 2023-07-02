@@ -29,7 +29,5 @@ dt {
 }
 
 img {
-  max-height: 10em;
-  max-width: 3em;
-  vertical-align: middle;
+  image-rendering: auto;
 }

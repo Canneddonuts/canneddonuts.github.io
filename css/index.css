@@ -21,6 +21,7 @@ body {
   border: 10px solid #CFB172;
   padding-right: 50px;
   padding-left:  30px;
+  border-radius: 10px;
 }
 
 dt {

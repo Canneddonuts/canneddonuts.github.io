@@ -1,10 +1,14 @@
 h1, h2, p, dd {
     text-align: center;
-    color: #bf3b65;
+    //color: #bf3b65;
+}
+
+html {
+    min-height:100%;
 }
 
 body {
-    background-color: #86A3E2;
+    background: linear-gradient(90deg, #bf3b65, #86A3E2);
 }
 
 .container {
@@ -18,7 +22,7 @@ body {
   width: 600px;
 
   margin: 10px;
-  border: 10px solid #CFB172;
+  border: 10px solid;
   padding-right: 50px;
   padding-left:  30px;
   border-radius: 10px;

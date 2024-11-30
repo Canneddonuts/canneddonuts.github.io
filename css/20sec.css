@@ -1,5 +1,4 @@
 h1, p {
-    color: #bf3b65;
     text-align: center;
 }
 
@@ -13,8 +12,7 @@ h1, p {
 .game {
     width: 500px;
     height: 450px;
-    border: 10px solid #CFB172;
-    background: #CFB172;
+    border: 10px solid;
     border-radius: 10px;
     display: flex; /* Use flexbox for iframe */
     justify-content: center; /* Center iframe */
@@ -24,13 +22,17 @@ h1, p {
 .info {
     background: Beige;
     margin-top: 10px; /* Space above the info section */
-    border: 10px solid #CFB172;
+    border: 10px solid;
     padding: 10px 30px; /* Adjust padding for a cleaner look */
     border-radius: 10px;
     text-align: center; /* Center text in info */
 }
 
+html {
+    min-height:100%;
+}
+
 body {
-    background-color: #86A3E2;
+    background: linear-gradient(90deg, #bf3b65, #86A3E2);
     margin: 0; /* Remove default body margin */
 }

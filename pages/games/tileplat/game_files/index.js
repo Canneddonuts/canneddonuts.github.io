@@ -39,7 +39,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmpp55jtw_r.js
+// include: /tmp/tmp_qiprf4y.js
 
   if (!Module['expectedDataFileDownloads']) {
     Module['expectedDataFileDownloads'] = 0;
@@ -157,6 +157,7 @@ var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
       }
 Module['FS_createPath']("/", "assets", true, true);
 Module['FS_createPath']("/assets", "gfx", true, true);
+Module['FS_createPath']("/assets", "lvls", true, true);
 
       /** @constructor */
       function DataRequest(start, end, audio) {
@@ -224,25 +225,25 @@ Module['FS_createPath']("/assets", "gfx", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/assets/gfx/background.png", "start": 0, "end": 2209}, {"filename": "/assets/gfx/plyr.png", "start": 2209, "end": 3262}, {"filename": "/assets/gfx/spike.png", "start": 3262, "end": 3547}, {"filename": "/assets/gfx/tile.png", "start": 3547, "end": 3865}], "remote_package_size": 3865});
+    loadPackage({"files": [{"filename": "/assets/gfx/background.png", "start": 0, "end": 2209}, {"filename": "/assets/gfx/plyr.png", "start": 2209, "end": 3262}, {"filename": "/assets/gfx/spike.png", "start": 3262, "end": 3547}, {"filename": "/assets/gfx/tile.png", "start": 3547, "end": 3865}, {"filename": "/assets/lvls/one.bin", "start": 3865, "end": 4481}], "remote_package_size": 4481});
 
   })();
 
-// end include: /tmp/tmpp55jtw_r.js
-// include: /tmp/tmpo34x689t.js
+// end include: /tmp/tmp_qiprf4y.js
+// include: /tmp/tmps18z8c06.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if (Module['$ww'] || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmpo34x689t.js
-// include: /tmp/tmphdubx894.js
+  // end include: /tmp/tmps18z8c06.js
+// include: /tmp/tmpx5huxh02.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmphdubx894.js
+  // end include: /tmp/tmpx5huxh02.js
 
 
 // Sometimes an existing Module object exists with properties

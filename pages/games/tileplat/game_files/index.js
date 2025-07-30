@@ -39,7 +39,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmpl_h12x1m.js
+// include: /tmp/tmpyxmp8ycl.js
 
   if (!Module['expectedDataFileDownloads']) {
     Module['expectedDataFileDownloads'] = 0;
@@ -226,25 +226,25 @@ Module['FS_createPath']("/assets", "lvls", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/assets/bgm/Gameover.ogg", "start": 0, "end": 798198, "audio": 1}, {"filename": "/assets/bgm/theme1.ogg", "start": 798198, "end": 1858337, "audio": 1}, {"filename": "/assets/gfx/background.png", "start": 1858337, "end": 1860546}, {"filename": "/assets/gfx/disc.png", "start": 1860546, "end": 1860945}, {"filename": "/assets/gfx/hud.png", "start": 1860945, "end": 1861545}, {"filename": "/assets/gfx/plyr.png", "start": 1861545, "end": 1862598}, {"filename": "/assets/gfx/spike.png", "start": 1862598, "end": 1862883}, {"filename": "/assets/gfx/tile.png", "start": 1862883, "end": 1863201}, {"filename": "/assets/lvls/level1.bin", "start": 1863201, "end": 1864267}, {"filename": "/assets/lvls/level2.bin", "start": 1864267, "end": 1864613}, {"filename": "/assets/lvls/level3.bin", "start": 1864613, "end": 1865079}, {"filename": "/assets/lvls/level4.bin", "start": 1865079, "end": 1865995}], "remote_package_size": 1865995});
+    loadPackage({"files": [{"filename": "/assets/bgm/Gameover.ogg", "start": 0, "end": 798198, "audio": 1}, {"filename": "/assets/bgm/theme1.ogg", "start": 798198, "end": 1858337, "audio": 1}, {"filename": "/assets/gfx/background.png", "start": 1858337, "end": 1860546}, {"filename": "/assets/gfx/disc.png", "start": 1860546, "end": 1860945}, {"filename": "/assets/gfx/hud.png", "start": 1860945, "end": 1861545}, {"filename": "/assets/gfx/plyr.png", "start": 1861545, "end": 1862598}, {"filename": "/assets/gfx/spike.png", "start": 1862598, "end": 1862883}, {"filename": "/assets/gfx/tile.png", "start": 1862883, "end": 1863201}, {"filename": "/assets/lvls/level1.bin", "start": 1863201, "end": 1864267}, {"filename": "/assets/lvls/level2.bin", "start": 1864267, "end": 1866083}, {"filename": "/assets/lvls/level3.bin", "start": 1866083, "end": 1868299}, {"filename": "/assets/lvls/level4.bin", "start": 1868299, "end": 1869215}], "remote_package_size": 1869215});
 
   })();
 
-// end include: /tmp/tmpl_h12x1m.js
-// include: /tmp/tmp5l99bc_f.js
+// end include: /tmp/tmpyxmp8ycl.js
+// include: /tmp/tmple4_nic2.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if (Module['$ww'] || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmp5l99bc_f.js
-// include: /tmp/tmpmwlpz5p2.js
+  // end include: /tmp/tmple4_nic2.js
+// include: /tmp/tmpo9_dbokz.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmpmwlpz5p2.js
+  // end include: /tmp/tmpo9_dbokz.js
 
 
 // Sometimes an existing Module object exists with properties

@@ -1,39 +1,60 @@
-h1, p {
-    text-align: center;
+h1, p{
+  text-align: center;
+  color: white;
 }
 
 .container {
-    display: flex;
-    flex-direction: column; /* Stack children vertically */
-    align-items: center; /* Center children horizontally */
-    justify-content: center; /* Center children vertically */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.game {
-    background: Black;
-    width: 640px;
-    height: 480px;
-    border: 10px solid;
-    border-radius: 10px;
-    display: flex; /* Use flexbox for iframe */
-    justify-content: center; /* Center iframe */
-    align-items: center; /* Center iframe */
+ul {
+  list-style-type: none;
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+  background: linear-gradient(90deg, #bf3b65, #86A3E2);
+  text-align: center;
 }
 
-.info {
-    background: Beige;
-    margin-top: 10px; /* Space above the info section */
-    border: 10px solid;
-    padding: 10px 30px; /* Adjust padding for a cleaner look */
-    border-radius: 10px;
-    text-align: center; /* Center text in info */
+li {
+  display: inline-block;
+}
+
+li a {
+  display: block;
+  color: white;
+  padding: 15px;
+  text-decoration: none;
+}
+
+li a:hover {
+ background: #5e729e;
+}
+
+.content {
+  width: 640px;
+  background: Black;
+  border: 10px solid;
+  border-image: linear-gradient(90deg, #bf3b65, #86A3E2) 1;
+  border-bottom: none;
+  text-align: center;
+}
+
+footer {
+  width: 650px;
+  padding: 5px;
+  color: white;
+  text-align: center;
+  background: linear-gradient(90deg, #bf3b65, #86A3E2);
 }
 
 html {
-    min-height:100%;
+  min-height:100%;
 }
 
 body {
-    background: linear-gradient(90deg, #bf3b65, #86A3E2);
-    margin: 0; /* Remove default body margin */
+  background: #404040;
+  margin: 0;
 }
